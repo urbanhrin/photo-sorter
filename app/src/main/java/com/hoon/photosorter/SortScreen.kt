@@ -70,6 +70,8 @@ fun SortScreen(vm: AppViewModel, date: LocalDate, onPlay: (MediaItem) -> Unit) {
                 Text("이 날짜는 정리를 마쳤어요", fontSize = 20.sp, fontWeight = FontWeight.Bold)
                 BigButton("목록으로", Keep, OnKeep, Modifier.fillMaxWidth(), onClick = goHome)
                 if (vm.canUndo) BigButton("되돌리기", Surface, TextMain, Modifier.fillMaxWidth()) { vm.undo() }
+                BigButton("처음부터 다시 정리", Surface, TextMain, Modifier.fillMaxWidth()) { vm.resetDate(date) }
+                Text("이 날짜에서 고른 남기기·지우기 표시가 모두 초기화돼요", color = Muted, fontSize = 13.sp, textAlign = TextAlign.Center)
             }
         } else {
             val item = list[idx]

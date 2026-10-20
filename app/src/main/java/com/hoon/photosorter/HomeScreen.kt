@@ -156,7 +156,7 @@ private fun DateCard(
             }
             if (isLast && done > 0) Text("이어서 정리하기 ›", color = Keep, fontWeight = FontWeight.Bold, fontSize = 15.sp)
         } else {
-            Text("정리 완료", color = Done, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+            Text("정리 완료 · 눌러서 다시 정리", color = Done, fontWeight = FontWeight.Bold, fontSize = 13.sp)
         }
     }
 }

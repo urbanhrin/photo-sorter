@@ -18,7 +18,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
@@ -35,27 +35,29 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-val Bg = Color(0xFF111214)
-val Surface = Color(0xFF1C1D21)
-val Track = Color(0xFF2C2E33)
-val TextMain = Color(0xFFF2F2F0)
-val TextSub = Color(0xFFC9CBD0)
-val Muted = Color(0xFFA3A6AD)
-val Keep = Color(0xFF4C8DFF)
-val OnKeep = Color(0xFF0A1630)
-val Del = Color(0xFFFF8A3D)
-val OnDel = Color(0xFF1A0E05)
-val Done = Color(0xFF7FD49B)
+// 파스텔 톤
+val Bg = Color(0xFFFAF7F2)
+val Surface = Color(0xFFFFFFFF)
+val Track = Color(0xFFE9E3EF)
+val TextMain = Color(0xFF2E2A33)
+val TextSub = Color(0xFF4A4552)
+val Muted = Color(0xFF6E6878)
+val Keep = Color(0xFFA7C7F2)
+val OnKeep = Color(0xFF1C3354)
+val Del = Color(0xFFF6B3A4)
+val OnDel = Color(0xFF5A2117)
+val Done = Color(0xFF2F7A55)
+val PhotoBg = Color(0xFFEFEAF3)
 
 @Composable
 fun SorterTheme(content: @Composable () -> Unit) {
     MaterialTheme(
-        colorScheme = darkColorScheme(
+        colorScheme = lightColorScheme(
             primary = Keep, onPrimary = OnKeep,
             background = Bg, onBackground = TextMain,
-            surface = Surface, onSurface = TextMain,
-            secondaryContainer = Color(0xFF2C3A55), onSecondaryContainer = TextMain,
-            outline = Color(0xFF34363C),
+            surface = Surface, onSurface = TextMain, onSurfaceVariant = TextSub,
+            secondaryContainer = Color(0xFFE4DAF3), onSecondaryContainer = TextMain,
+            outline = Color(0xFFCFC7D8),
         ),
     ) {
         CompositionLocalProvider(LocalContentColor provides TextMain, content = content)
@@ -81,7 +83,7 @@ fun durationLabel(ms: Long): String {
 
 @Composable
 fun MediaView(item: MediaItem, modifier: Modifier = Modifier, crop: Boolean = false) {
-    Box(modifier.background(Color.Black)) {
+    Box(modifier.background(PhotoBg)) {
         AsyncImage(
             model = item.uri,
             contentDescription = null,
@@ -98,7 +100,7 @@ fun MediaView(item: MediaItem, modifier: Modifier = Modifier, crop: Boolean = fa
 fun Pill(
     text: String,
     modifier: Modifier = Modifier,
-    bg: Color = Color(0xC7111214),
+    bg: Color = Color(0xE6FFFFFF),
     fg: Color = TextMain,
     bold: Boolean = false,
 ) {

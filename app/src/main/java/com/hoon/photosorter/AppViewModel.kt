@@ -80,6 +80,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         update(mapOf(id to d))
     }
 
+    /** 이미 정리한 날짜를 처음부터 다시 고르도록 그 날짜의 선택을 모두 지운다 */
+    fun resetDate(date: LocalDate) {
+        undoStack.clear()
+        canUndo = false
+        update(itemsFor(date).associate { it.id to null })
+    }
+
     fun undo() {
         val (id, prev) = undoStack.removeLastOrNull() ?: return
         canUndo = undoStack.isNotEmpty()

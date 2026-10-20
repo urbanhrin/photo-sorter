@@ -24,7 +24,7 @@ data class MediaItem(
 )
 
 /** 이 간격(밀리초) 안에 연달아 찍은 사진을 한 묶음(비슷한 사진/연사)으로 본다 */
-const val SIMILAR_GAP_MS = 3_000L
+const val SIMILAR_GAP_MS = 1_000L
 
 object MediaRepo {
 
