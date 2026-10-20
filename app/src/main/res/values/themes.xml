@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="icon_bg">#FF111214</color>
+    <style name="Theme.PhotoSorter" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/icon_bg</item>
+    </style>
+</resources>
