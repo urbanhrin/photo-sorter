@@ -51,7 +51,7 @@ fun HomeScreen(vm: AppViewModel) {
                 Text("사진 정리", fontSize = 28.sp, fontWeight = FontWeight.Bold)
                 Text("남은 항목 ${kindItems.count { decisions[it.id] == null }}개", color = Muted, fontSize = 14.sp)
             }
-            // 안드로이드 8 에서만 보이는 앱 휴지통 입구
+            // 안드로이드 8~10 에서만 보이는 앱 휴지통 입구
             if (USE_APP_TRASH && vm.trash.isNotEmpty()) {
                 TextButton(onClick = { vm.screen = Screen.Trash }) {
                     Text("휴지통 ${vm.trash.size}", color = TextSub, fontWeight = FontWeight.Bold)

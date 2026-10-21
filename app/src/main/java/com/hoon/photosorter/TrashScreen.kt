@@ -33,7 +33,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 
-/** 안드로이드 8 전용 앱 휴지통 화면 */
+/** 안드로이드 8~10 전용 앱 휴지통 화면 */
 @Composable
 fun TrashScreen(vm: AppViewModel) {
     val ctx = LocalContext.current

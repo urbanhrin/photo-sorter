@@ -71,21 +71,17 @@ class MainActivity : ComponentActivity() {
                             is Screen.Compare -> CompareScreen(vm, s.groupId, s.from)
                             Screen.Review -> ReviewScreen(
                                 vm,
-                                useTrash = Build.VERSION.SDK_INT >= 30 || USE_APP_TRASH,
                                 trashNote = if (USE_APP_TRASH) "앱 휴지통에 30일간 보관돼요" else "휴대폰 휴지통에 30일간 보관돼요",
                             ) {
-                                when {
-                                    Build.VERSION.SDK_INT >= 30 -> {
-                                        val uris = vm.startTrash()
-                                        if (uris.isNotEmpty()) {
-                                            val pi = MediaStore.createTrashRequest(contentResolver, uris, true)
-                                            trashLauncher.launch(IntentSenderRequest.Builder(pi.intentSender).build())
-                                        }
+                                if (USE_APP_TRASH) {
+                                    // 안드로이드 8~10: 시스템 휴지통이 없어 앱 휴지통으로 옮긴다
+                                    vm.moveToAppTrash()
+                                } else {
+                                    val uris = vm.startTrash()
+                                    if (uris.isNotEmpty()) {
+                                        val pi = MediaStore.createTrashRequest(contentResolver, uris, true)
+                                        trashLauncher.launch(IntentSenderRequest.Builder(pi.intentSender).build())
                                     }
-                                    // 안드로이드 8: 앱 휴지통으로 옮긴다
-                                    USE_APP_TRASH -> vm.moveToAppTrash()
-                                    // 안드로이드 9·10: 시스템 휴지통이 없어 바로 지운다
-                                    else -> vm.deletePermanently()
                                 }
                             }
                             Screen.Trash -> TrashScreen(vm)

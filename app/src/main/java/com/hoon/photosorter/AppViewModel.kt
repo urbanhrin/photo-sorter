@@ -27,8 +27,8 @@ sealed interface Screen {
     data object Trash : Screen
 }
 
-/** 앱 자체 휴지통은 안드로이드 8(API 26·27)에서만 쓴다 */
-val USE_APP_TRASH = Build.VERSION.SDK_INT <= 27
+/** 시스템 휴지통이 없는 안드로이드 8~10(API 26~29)은 앱 자체 휴지통을 쓴다 */
+val USE_APP_TRASH = Build.VERSION.SDK_INT <= 29
 
 class AppViewModel(app: Application) : AndroidViewModel(app) {
 
@@ -61,7 +61,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** 안드로이드 8: 지울 항목을 앱 휴지통으로 옮긴다 */
+    /** 안드로이드 8~10: 지울 항목을 앱 휴지통으로 옮긴다 */
     fun moveToAppTrash() {
         val list = pendingDeletes()
         viewModelScope.launch {
@@ -155,19 +155,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val list = pendingDeletes()
         trashing = list.map { it.id }.toSet()
         return list.map { it.uri }
-    }
-
-    /** 안드로이드 10 이하: 휴지통 없이 바로 지운다. 지워진 것만 목록에서 뺀다 */
-    fun deletePermanently() {
-        val list = pendingDeletes()
-        viewModelScope.launch {
-            val resolver = getApplication<Application>().contentResolver
-            trashing = withContext(Dispatchers.IO) {
-                list.filter { runCatching { resolver.delete(it.uri, null, null) > 0 }.getOrDefault(false) }
-                    .map { it.id }.toSet()
-            }
-            onTrashed()
-        }
     }
 
     fun onTrashed() {

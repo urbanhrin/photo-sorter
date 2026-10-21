@@ -22,7 +22,7 @@ data class MediaItem(
     val isScreenshot: Boolean,
     /** 비슷한 사진 묶음 번호. 묶음이 없으면 -1 */
     val groupId: Long = -1L,
-    /** 실제 파일 경로. 안드로이드 9 이하에서만 채워진다(앱 휴지통용) */
+    /** 실제 파일 경로. 안드로이드 10 이하에서만 채워진다(앱 휴지통용) */
     val path: String? = null,
 )
 
@@ -39,6 +39,9 @@ object MediaRepo {
         @Suppress("DEPRECATION")
         val pathCol = if (modern) MediaStore.MediaColumns.RELATIVE_PATH else MediaStore.MediaColumns.DATA
         val bucketCol = if (modern) MediaStore.MediaColumns.BUCKET_DISPLAY_NAME else null
+        // 앱 휴지통(안드로이드 10 이하)은 실제 파일 경로가 필요하다. 9 이하는 pathCol 이 이미 _data
+        @Suppress("DEPRECATION")
+        val dataCol = if (USE_APP_TRASH && modern) MediaStore.MediaColumns.DATA else null
         val projection = listOfNotNull(
             MediaStore.Files.FileColumns._ID,
             MediaStore.Files.FileColumns.MEDIA_TYPE,
@@ -48,6 +51,7 @@ object MediaRepo {
             MediaStore.MediaColumns.DURATION,
             pathCol,
             bucketCol,
+            dataCol,
         ).toTypedArray()
         val selection = "${MediaStore.Files.FileColumns.MEDIA_TYPE} IN (?, ?)"
         val args = arrayOf(
@@ -67,6 +71,7 @@ object MediaRepo {
             val iDur = c.getColumnIndexOrThrow(MediaStore.MediaColumns.DURATION)
             val iPath = c.getColumnIndexOrThrow(pathCol)
             val iBucket = bucketCol?.let { c.getColumnIndexOrThrow(it) }
+            val iData = if (USE_APP_TRASH) c.getColumnIndexOrThrow(dataCol ?: pathCol) else null
 
             while (c.moveToNext()) {
                 val id = c.getLong(iId)
@@ -86,7 +91,7 @@ object MediaRepo {
                     durationMs = c.getLong(iDur),
                     isScreenshot = "screenshot" in where || "스크린샷" in where ||
                         "screenrecord" in where || "screen record" in where,
-                    path = if (modern) null else c.getString(iPath),
+                    path = iData?.let { c.getString(it) },
                 )
             }
         }
