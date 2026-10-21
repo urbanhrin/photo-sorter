@@ -10,7 +10,7 @@ android {
 
     defaultConfig {
         applicationId = "com.hoon.photosorter"
-        minSdk = 30 // 휴지통으로 보내기(MediaStore.createTrashRequest)가 안드로이드 11부터 지원
+        minSdk = 26 // 안드로이드 8부터. 휴지통(createTrashRequest)은 11부터라 그 아래는 바로 삭제
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"

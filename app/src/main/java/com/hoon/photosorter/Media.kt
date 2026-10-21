@@ -3,6 +3,7 @@ package com.hoon.photosorter
 import android.content.ContentUris
 import android.content.Context
 import android.net.Uri
+import android.os.Build
 import android.provider.MediaStore
 import java.time.Instant
 import java.time.LocalDate
@@ -31,16 +32,21 @@ object MediaRepo {
     fun load(context: Context): List<MediaItem> {
         val zone = ZoneId.systemDefault()
         val result = ArrayList<MediaItem>()
-        val projection = arrayOf(
+        // 안드로이드 9 이하에는 RELATIVE_PATH 가 없어서 파일 경로(_data)로 스크린샷 폴더를 알아낸다
+        val modern = Build.VERSION.SDK_INT >= 29
+        @Suppress("DEPRECATION")
+        val pathCol = if (modern) MediaStore.MediaColumns.RELATIVE_PATH else MediaStore.MediaColumns.DATA
+        val bucketCol = if (modern) MediaStore.MediaColumns.BUCKET_DISPLAY_NAME else null
+        val projection = listOfNotNull(
             MediaStore.Files.FileColumns._ID,
             MediaStore.Files.FileColumns.MEDIA_TYPE,
             MediaStore.MediaColumns.DATE_TAKEN,
             MediaStore.MediaColumns.DATE_ADDED,
             MediaStore.MediaColumns.SIZE,
             MediaStore.MediaColumns.DURATION,
-            MediaStore.MediaColumns.RELATIVE_PATH,
-            MediaStore.MediaColumns.BUCKET_DISPLAY_NAME,
-        )
+            pathCol,
+            bucketCol,
+        ).toTypedArray()
         val selection = "${MediaStore.Files.FileColumns.MEDIA_TYPE} IN (?, ?)"
         val args = arrayOf(
             MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE.toString(),
@@ -57,14 +63,14 @@ object MediaRepo {
             val iAdded = c.getColumnIndexOrThrow(MediaStore.MediaColumns.DATE_ADDED)
             val iSize = c.getColumnIndexOrThrow(MediaStore.MediaColumns.SIZE)
             val iDur = c.getColumnIndexOrThrow(MediaStore.MediaColumns.DURATION)
-            val iPath = c.getColumnIndexOrThrow(MediaStore.MediaColumns.RELATIVE_PATH)
-            val iBucket = c.getColumnIndexOrThrow(MediaStore.MediaColumns.BUCKET_DISPLAY_NAME)
+            val iPath = c.getColumnIndexOrThrow(pathCol)
+            val iBucket = bucketCol?.let { c.getColumnIndexOrThrow(it) }
 
             while (c.moveToNext()) {
                 val id = c.getLong(iId)
                 val kind = if (c.getInt(iType) == MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO) Kind.VIDEO else Kind.IMAGE
                 val taken = c.getLong(iTaken).takeIf { it > 0 } ?: (c.getLong(iAdded) * 1000)
-                val where = ((c.getString(iPath) ?: "") + "/" + (c.getString(iBucket) ?: "")).lowercase()
+                val where = ((c.getString(iPath) ?: "") + "/" + (iBucket?.let { c.getString(it) } ?: "")).lowercase()
                 val base = if (kind == Kind.VIDEO) MediaStore.Video.Media.EXTERNAL_CONTENT_URI
                 else MediaStore.Images.Media.EXTERNAL_CONTENT_URI
 

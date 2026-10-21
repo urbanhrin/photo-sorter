@@ -69,11 +69,16 @@ class MainActivity : ComponentActivity() {
                             Screen.Home -> HomeScreen(vm)
                             is Screen.Sort -> SortScreen(vm, s.date, onPlay = ::playVideo)
                             is Screen.Compare -> CompareScreen(vm, s.groupId, s.from)
-                            Screen.Review -> ReviewScreen(vm) {
-                                val uris = vm.startTrash()
-                                if (uris.isNotEmpty()) {
-                                    val pi = MediaStore.createTrashRequest(contentResolver, uris, true)
-                                    trashLauncher.launch(IntentSenderRequest.Builder(pi.intentSender).build())
+                            Screen.Review -> ReviewScreen(vm, useTrash = Build.VERSION.SDK_INT >= 30) {
+                                if (Build.VERSION.SDK_INT >= 30) {
+                                    val uris = vm.startTrash()
+                                    if (uris.isNotEmpty()) {
+                                        val pi = MediaStore.createTrashRequest(contentResolver, uris, true)
+                                        trashLauncher.launch(IntentSenderRequest.Builder(pi.intentSender).build())
+                                    }
+                                } else {
+                                    // 안드로이드 10 이하는 시스템 휴지통이 없어 바로 지운다
+                                    vm.deletePermanently()
                                 }
                             }
                         }
@@ -100,7 +105,8 @@ class MainActivity : ComponentActivity() {
             Manifest.permission.READ_MEDIA_IMAGES,
             Manifest.permission.READ_MEDIA_VIDEO,
         )
-        else -> arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
+        Build.VERSION.SDK_INT >= 30 -> arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
+        else -> arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE)
     }
 
     private fun hasMediaPermission(): Boolean {

@@ -110,6 +110,19 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         return list.map { it.uri }
     }
 
+    /** 안드로이드 10 이하: 휴지통 없이 바로 지운다. 지워진 것만 목록에서 뺀다 */
+    fun deletePermanently() {
+        val list = pendingDeletes()
+        viewModelScope.launch {
+            val resolver = getApplication<Application>().contentResolver
+            trashing = withContext(Dispatchers.IO) {
+                list.filter { runCatching { resolver.delete(it.uri, null, null) > 0 }.getOrDefault(false) }
+                    .map { it.id }.toSet()
+            }
+            onTrashed()
+        }
+    }
+
     fun onTrashed() {
         items = items.filter { it.id !in trashing }
         update(trashing.associateWith { null })
