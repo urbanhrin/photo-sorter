@@ -69,18 +69,26 @@ class MainActivity : ComponentActivity() {
                             Screen.Home -> HomeScreen(vm)
                             is Screen.Sort -> SortScreen(vm, s.date, onPlay = ::playVideo)
                             is Screen.Compare -> CompareScreen(vm, s.groupId, s.from)
-                            Screen.Review -> ReviewScreen(vm, useTrash = Build.VERSION.SDK_INT >= 30) {
-                                if (Build.VERSION.SDK_INT >= 30) {
-                                    val uris = vm.startTrash()
-                                    if (uris.isNotEmpty()) {
-                                        val pi = MediaStore.createTrashRequest(contentResolver, uris, true)
-                                        trashLauncher.launch(IntentSenderRequest.Builder(pi.intentSender).build())
+                            Screen.Review -> ReviewScreen(
+                                vm,
+                                useTrash = Build.VERSION.SDK_INT >= 30 || USE_APP_TRASH,
+                                trashNote = if (USE_APP_TRASH) "앱 휴지통에 30일간 보관돼요" else "휴대폰 휴지통에 30일간 보관돼요",
+                            ) {
+                                when {
+                                    Build.VERSION.SDK_INT >= 30 -> {
+                                        val uris = vm.startTrash()
+                                        if (uris.isNotEmpty()) {
+                                            val pi = MediaStore.createTrashRequest(contentResolver, uris, true)
+                                            trashLauncher.launch(IntentSenderRequest.Builder(pi.intentSender).build())
+                                        }
                                     }
-                                } else {
-                                    // 안드로이드 10 이하는 시스템 휴지통이 없어 바로 지운다
-                                    vm.deletePermanently()
+                                    // 안드로이드 8: 앱 휴지통으로 옮긴다
+                                    USE_APP_TRASH -> vm.moveToAppTrash()
+                                    // 안드로이드 9·10: 시스템 휴지통이 없어 바로 지운다
+                                    else -> vm.deletePermanently()
                                 }
                             }
+                            Screen.Trash -> TrashScreen(vm)
                         }
                     }
                 }

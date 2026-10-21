@@ -20,6 +20,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -42,9 +43,20 @@ fun HomeScreen(vm: AppViewModel) {
     val pending = vm.pendingDeletes().size
 
     Column(Modifier.fillMaxSize()) {
-        Column(Modifier.padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 8.dp)) {
-            Text("사진 정리", fontSize = 28.sp, fontWeight = FontWeight.Bold)
-            Text("남은 항목 ${kindItems.count { decisions[it.id] == null }}개", color = Muted, fontSize = 14.sp)
+        Row(
+            Modifier.fillMaxWidth().padding(start = 20.dp, end = 12.dp, top = 20.dp, bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text("사진 정리", fontSize = 28.sp, fontWeight = FontWeight.Bold)
+                Text("남은 항목 ${kindItems.count { decisions[it.id] == null }}개", color = Muted, fontSize = 14.sp)
+            }
+            // 안드로이드 8 에서만 보이는 앱 휴지통 입구
+            if (USE_APP_TRASH && vm.trash.isNotEmpty()) {
+                TextButton(onClick = { vm.screen = Screen.Trash }) {
+                    Text("휴지통 ${vm.trash.size}", color = TextSub, fontWeight = FontWeight.Bold)
+                }
+            }
         }
 
         // 사진 / 동영상

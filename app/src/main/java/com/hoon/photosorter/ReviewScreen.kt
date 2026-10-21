@@ -30,9 +30,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-/** useTrash=false 는 안드로이드 10 이하: 휴지통이 없어 바로 영구 삭제된다 */
+/** useTrash=false 는 안드로이드 9·10: 휴지통이 없어 바로 영구 삭제된다 */
 @Composable
-fun ReviewScreen(vm: AppViewModel, useTrash: Boolean, onTrash: () -> Unit) {
+fun ReviewScreen(vm: AppViewModel, useTrash: Boolean, trashNote: String, onTrash: () -> Unit) {
     val list = vm.pendingDeletes().sortedByDescending { it.takenAt }
     val goHome: () -> Unit = { vm.screen = Screen.Home }
     var confirm by remember { mutableStateOf(false) }
@@ -69,7 +69,7 @@ fun ReviewScreen(vm: AppViewModel, useTrash: Boolean, onTrash: () -> Unit) {
                 onClick = { if (useTrash) onTrash() else confirm = true },
             )
             Text(
-                if (useTrash) "휴대폰 휴지통에 30일간 보관돼요"
+                if (useTrash) trashNote
                 else "이 휴대폰은 휴지통이 없어서 지우면 되살릴 수 없어요",
                 color = Muted, fontSize = 12.sp, textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth().padding(top = 8.dp),

@@ -2,7 +2,10 @@ package com.hoon.photosorter
 
 import android.app.Application
 import android.content.Context
+import android.media.MediaScannerConnection
 import android.net.Uri
+import android.os.Build
+import java.util.concurrent.atomic.AtomicInteger
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -21,7 +24,11 @@ sealed interface Screen {
     data class Sort(val date: LocalDate) : Screen
     data class Compare(val groupId: Long, val from: LocalDate) : Screen
     data object Review : Screen
+    data object Trash : Screen
 }
+
+/** 앱 자체 휴지통은 안드로이드 8(API 26·27)에서만 쓴다 */
+val USE_APP_TRASH = Build.VERSION.SDK_INT <= 27
 
 class AppViewModel(app: Application) : AndroidViewModel(app) {
 
@@ -36,6 +43,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var screen by mutableStateOf<Screen>(Screen.Home)
     var lastDate by mutableStateOf(prefs.getString(KEY_LAST, null)?.let { LocalDate.parse(it) }); private set
     var canUndo by mutableStateOf(false); private set
+    var trash by mutableStateOf<List<TrashEntry>>(emptyList()); private set
 
     private val undoStack = ArrayDeque<Pair<Long, Decision?>>()
     private var trashing: Set<Long> = emptySet()
@@ -43,7 +51,46 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun reload() {
         viewModelScope.launch {
             items = withContext(Dispatchers.IO) { MediaRepo.load(getApplication()) }
+            if (USE_APP_TRASH) {
+                trash = withContext(Dispatchers.IO) {
+                    TrashRepo.purgeExpired(getApplication())
+                    TrashRepo.list(getApplication())
+                }
+            }
             loaded = true
+        }
+    }
+
+    /** 안드로이드 8: 지울 항목을 앱 휴지통으로 옮긴다 */
+    fun moveToAppTrash() {
+        val list = pendingDeletes()
+        viewModelScope.launch {
+            trashing = withContext(Dispatchers.IO) { TrashRepo.moveIn(getApplication(), list) }
+            trash = withContext(Dispatchers.IO) { TrashRepo.list(getApplication()) }
+            onTrashed()
+        }
+    }
+
+    fun restore(entries: List<TrashEntry>) {
+        val app = getApplication<Application>()
+        viewModelScope.launch {
+            val paths = withContext(Dispatchers.IO) { entries.mapNotNull { TrashRepo.restore(app, it) } }
+            trash = withContext(Dispatchers.IO) { TrashRepo.list(app) }
+            if (paths.isEmpty()) return@launch
+            // 되돌린 파일을 갤러리에 다시 등록하고, 다 끝나면 목록을 새로 읽는다
+            val left = AtomicInteger(paths.size)
+            MediaScannerConnection.scanFile(app, paths.toTypedArray(), null) { _, _ ->
+                if (left.decrementAndGet() == 0) viewModelScope.launch(Dispatchers.Main) { reload() }
+            }
+        }
+    }
+
+    fun emptyTrash(entries: List<TrashEntry>) {
+        viewModelScope.launch {
+            trash = withContext(Dispatchers.IO) {
+                TrashRepo.purge(getApplication(), entries)
+                TrashRepo.list(getApplication())
+            }
         }
     }
 

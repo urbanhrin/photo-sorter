@@ -22,6 +22,8 @@ data class MediaItem(
     val isScreenshot: Boolean,
     /** 비슷한 사진 묶음 번호. 묶음이 없으면 -1 */
     val groupId: Long = -1L,
+    /** 실제 파일 경로. 안드로이드 9 이하에서만 채워진다(앱 휴지통용) */
+    val path: String? = null,
 )
 
 /** 이 간격(밀리초) 안에 연달아 찍은 사진을 한 묶음(비슷한 사진/연사)으로 본다 */
@@ -84,6 +86,7 @@ object MediaRepo {
                     durationMs = c.getLong(iDur),
                     isScreenshot = "screenshot" in where || "스크린샷" in where ||
                         "screenrecord" in where || "screen record" in where,
+                    path = if (modern) null else c.getString(iPath),
                 )
             }
         }
