@@ -40,6 +40,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var decisions by mutableStateOf(readDecisions()); private set
     var kind by mutableStateOf(Kind.IMAGE); private set
     var filter by mutableStateOf(Filter.ALL)
+    var calendarMode by mutableStateOf(false)
     var screen by mutableStateOf<Screen>(Screen.Home)
     var lastDate by mutableStateOf(prefs.getString(KEY_LAST, null)?.let { LocalDate.parse(it) }); private set
     var canUndo by mutableStateOf(false); private set

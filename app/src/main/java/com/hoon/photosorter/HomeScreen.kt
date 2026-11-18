@@ -57,6 +57,25 @@ fun HomeScreen(vm: AppViewModel) {
                     Text("휴지통 ${vm.trash.size}", color = TextSub, fontWeight = FontWeight.Bold)
                 }
             }
+            // 목록 / 달력 전환
+            Row(Modifier.background(Surface, RoundedCornerShape(10.dp)).padding(3.dp), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                listOf(false to "목록", true to "달력").forEach { (cal, name) ->
+                    val selected = vm.calendarMode == cal
+                    Box(
+                        Modifier.height(40.dp).clip(RoundedCornerShape(8.dp))
+                            .background(if (selected) TextMain else Color.Transparent)
+                            .clickable { vm.calendarMode = cal }
+                            .padding(horizontal = 12.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            name, fontSize = 14.sp,
+                            color = if (selected) Bg else TextSub,
+                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                        )
+                    }
+                }
+            }
         }
 
         // 사진 / 동영상
@@ -106,6 +125,7 @@ fun HomeScreen(vm: AppViewModel) {
             !vm.loaded -> Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator(color = Keep)
             }
+            vm.calendarMode -> CalendarView(vm, groups.toMap(), decisions, Modifier.weight(1f).fillMaxWidth())
             groups.isEmpty() -> Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                 Text("표시할 항목이 없어요", color = Muted)
             }
