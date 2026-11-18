@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="icon_bg">#FF111214</color>
+    <color name="icon_bg">#FF000000</color>
     <color name="window_bg">#FFFAF7F2</color>
     <style name="Theme.PhotoSorter" parent="android:Theme.Material.Light.NoActionBar">
         <item name="android:windowBackground">@color/window_bg</item>

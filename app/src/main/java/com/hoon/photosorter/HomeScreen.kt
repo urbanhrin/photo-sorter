@@ -48,7 +48,7 @@ fun HomeScreen(vm: AppViewModel) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(Modifier.weight(1f)) {
-                Text("사진 정리", fontSize = 28.sp, fontWeight = FontWeight.Bold)
+                Text("Swik", fontSize = 28.sp, fontWeight = FontWeight.Bold)
                 Text("남은 항목 ${kindItems.count { decisions[it.id] == null }}개", color = Muted, fontSize = 14.sp)
             }
             // 안드로이드 8~10 에서만 보이는 앱 휴지통 입구
