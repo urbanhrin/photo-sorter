@@ -25,6 +25,10 @@ sealed interface Screen {
     data class Compare(val groupId: Long, val from: LocalDate) : Screen
     data object Review : Screen
     data object Trash : Screen
+    data class Pick(val date: LocalDate) : Screen
+    data class Basket(val folderId: Long) : Screen
+    data class Collected(val folderId: Long) : Screen
+    data object Folders : Screen
 }
 
 /** 시스템 휴지통이 없는 안드로이드 8~10(API 26~29)은 앱 자체 휴지통을 쓴다 */
@@ -46,11 +50,28 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var canUndo by mutableStateOf(false); private set
     var trash by mutableStateOf<List<TrashEntry>>(emptyList()); private set
 
+    // ── 고르기 모드 ──
+    var pickMode by mutableStateOf(false)
+    var folders by mutableStateOf(PickRepo.load(app)); private set
+    var activeFolderId by mutableStateOf(PickRepo.activeId(app)); private set
+    var history by mutableStateOf(PickRepo.history(app)); private set
+    var canUndoPick by mutableStateOf(false); private set
+    /** 폴더 편집 창. id 가 -1 이면 새 폴더 */
+    var editingFolder by mutableStateOf<PickFolder?>(null)
+    /** 사본을 만들거나 지우는 동안 보여줄 문구 */
+    var busy by mutableStateOf<String?>(null); private set
+    private val pickUndo = ArrayDeque<Triple<Long, Long, Boolean>>() // 폴더, 사진, 담았는지
+
     private val undoStack = ArrayDeque<Pair<Long, Decision?>>()
     private var trashing: Set<Long> = emptySet()
 
     fun reload() {
         viewModelScope.launch {
+            folders = withContext(Dispatchers.IO) {
+                PickRepo.runDue(getApplication())
+                PickRepo.load(getApplication())
+            }
+            history = PickRepo.history(getApplication())
             items = withContext(Dispatchers.IO) { MediaRepo.load(getApplication()) }
             if (USE_APP_TRASH) {
                 trash = withContext(Dispatchers.IO) {
@@ -119,7 +140,128 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         prefs.edit().putString(KEY_LAST, date.toString()).apply()
         undoStack.clear()
         canUndo = false
-        screen = Screen.Sort(date)
+        pickUndo.clear()
+        canUndoPick = false
+        screen = if (pickMode) Screen.Pick(date) else Screen.Sort(date)
+    }
+
+    fun activeFolder(): PickFolder? = folders.find { it.id == activeFolderId } ?: folders.firstOrNull()
+
+    fun folder(id: Long) = folders.find { it.id == id }
+
+    fun setActive(id: Long) {
+        activeFolderId = id
+        PickRepo.setActive(getApplication(), id)
+    }
+
+    /** 이 폴더에 담을 수 있는 그날 사진 (사진만 폴더면 동영상 제외) */
+    fun pickList(date: LocalDate, f: PickFolder) =
+        itemsFor(date).filter { !(f.photoOnly && it.kind == Kind.VIDEO) }
+
+    fun pick(folderId: Long, mediaId: Long, add: Boolean) {
+        pickUndo.addLast(Triple(folderId, mediaId, add))
+        canUndoPick = true
+        changeFolder(folderId) { f ->
+            f.copy(seen = f.seen + mediaId, items = if (add && mediaId !in f.items) ordered(f, f.items + mediaId) else f.items)
+        }
+    }
+
+    fun undoPick() {
+        val (folderId, mediaId, added) = pickUndo.removeLastOrNull() ?: return
+        canUndoPick = pickUndo.isNotEmpty()
+        changeFolder(folderId) { f -> f.copy(seen = f.seen - mediaId, items = if (added) f.items - mediaId else f.items) }
+    }
+
+    /** 이 날짜를 이 폴더 기준으로 처음부터 다시 본다 (바구니는 그대로) */
+    fun resetSeen(date: LocalDate, folderId: Long) {
+        val ids = itemsFor(date).map { it.id }.toSet()
+        pickUndo.clear()
+        canUndoPick = false
+        changeFolder(folderId) { it.copy(seen = it.seen - ids) }
+    }
+
+    fun removeFromBasket(folderId: Long, mediaId: Long) = changeFolder(folderId) { it.copy(items = it.items - mediaId) }
+
+    /** 바구니에서 꾹 눌러 끌어 순서를 바꾼다 */
+    fun moveInBasket(folderId: Long, fromId: Long, toId: Long) = changeFolder(folderId) { f ->
+        val list = f.items.toMutableList()
+        val from = list.indexOf(fromId)
+        val to = list.indexOf(toId)
+        if (from < 0 || to < 0) return@changeFolder f
+        list.add(to, list.removeAt(from))
+        f.copy(items = list, reordered = true)
+    }
+
+    fun saveFolder(id: Long, name: String, color: Int, photoOnly: Boolean, clearHours: Int) {
+        val app = getApplication<Application>()
+        val old = folder(id)
+        if (old == null) {
+            if (folders.size >= MAX_FOLDERS) return
+            val f = PickFolder(System.currentTimeMillis(), name.trim().ifEmpty { "폴더" }, color, photoOnly, clearHours)
+            folders = folders + f
+            PickRepo.save(app, folders)
+            setActive(f.id)
+        } else {
+            changeFolder(id) { it.copy(name = name.trim().ifEmpty { it.name }, color = color, photoOnly = photoOnly, clearHours = clearHours) }
+            folder(id)?.let { PickRepo.schedule(app, it) }
+        }
+        editingFolder = null
+    }
+
+    fun setClearHours(folderId: Long, hours: Int) {
+        changeFolder(folderId) { it.copy(clearHours = hours) }
+        folder(folderId)?.let { PickRepo.schedule(getApplication(), it) }
+    }
+
+    fun deleteFolder(id: Long) {
+        val f = folder(id) ?: return
+        val app = getApplication<Application>()
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) { PickRepo.clear(app, f) }
+            folders = folders.filter { it.id != id }
+            PickRepo.save(app, folders)
+            if (activeFolderId == id) folders.firstOrNull()?.let { setActive(it.id) }
+        }
+    }
+
+    /** 바구니 사진을 'Swik 이름' 폴더에 사본으로 모은다 */
+    fun collect(folderId: Long) {
+        val f = folder(folderId) ?: return
+        val app = getApplication<Application>()
+        val byId = items.associateBy { it.id }
+        busy = "${f.items.size}장을 모으는 중이에요"
+        viewModelScope.launch {
+            val done = withContext(Dispatchers.IO) { PickRepo.collect(app, f, byId) }
+            folders = folders.map { if (it.id == folderId) done else it }
+            busy = null
+            screen = Screen.Collected(folderId)
+        }
+    }
+
+    /** 사본만 지운다. 원본은 그대로 */
+    fun clearFolder(folderId: Long) {
+        val f = folder(folderId) ?: return
+        val app = getApplication<Application>()
+        busy = "비우는 중이에요"
+        viewModelScope.launch {
+            val done = withContext(Dispatchers.IO) { PickRepo.clear(app, f) }
+            folders = folders.map { if (it.id == folderId) done else it }
+            history = PickRepo.history(app)
+            busy = null
+            screen = Screen.Home
+        }
+    }
+
+    private fun changeFolder(id: Long, change: (PickFolder) -> PickFolder) {
+        folders = folders.map { if (it.id == id) change(it) else it }
+        PickRepo.save(getApplication(), folders)
+    }
+
+    /** 순서를 직접 바꾸지 않았으면 찍은 순서로 맞춘다 */
+    private fun ordered(f: PickFolder, ids: List<Long>): List<Long> {
+        if (f.reordered) return ids
+        val taken = items.associate { it.id to it.takenAt }
+        return ids.sortedBy { taken[it] ?: Long.MAX_VALUE }
     }
 
     fun decide(id: Long, d: Decision) {

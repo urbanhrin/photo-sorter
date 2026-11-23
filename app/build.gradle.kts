@@ -53,4 +53,6 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
     implementation("io.coil-kt:coil-compose:2.7.0")
     implementation("io.coil-kt:coil-video:2.7.0")
+    // 고르기 폴더 자동 비우기 예약 (휴대폰 안에서만 동작)
+    implementation("androidx.work:work-runtime-ktx:2.9.1")
 }

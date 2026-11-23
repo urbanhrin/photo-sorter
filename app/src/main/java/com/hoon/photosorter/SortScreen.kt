@@ -121,8 +121,15 @@ fun SortScreen(vm: AppViewModel, date: LocalDate, onPlay: (MediaItem) -> Unit) {
     }
 }
 
+/** 오른쪽/왼쪽으로 밀어 고르는 카드. 고르기 모드는 글자와 색만 바꿔 같이 쓴다 */
 @Composable
-private fun SwipeCard(item: MediaItem, onKeep: () -> Unit, onDelete: () -> Unit) {
+fun SwipeCard(
+    item: MediaItem,
+    onKeep: () -> Unit,
+    onDelete: () -> Unit,
+    right: Triple<String, Color, Color> = Triple("남기기", Keep, OnKeep),
+    left: Triple<String, Color, Color> = Triple("지우기", Del, OnDel),
+) {
     val offset = remember { Animatable(0f) }
     val scope = rememberCoroutineScope()
     var width by remember { mutableFloatStateOf(1f) }
@@ -158,8 +165,8 @@ private fun SwipeCard(item: MediaItem, onKeep: () -> Unit, onDelete: () -> Unit)
     ) {
         MediaView(item, Modifier.fillMaxSize())
         val p = (offset.value / (width * 0.25f)).coerceIn(-1f, 1f)
-        if (p > 0f) Stamp("남기기", Keep, OnKeep, Modifier.align(Alignment.TopStart).padding(20.dp).alpha(p))
-        if (p < 0f) Stamp("지우기", Del, OnDel, Modifier.align(Alignment.TopEnd).padding(20.dp).alpha(-p))
+        if (p > 0f) Stamp(right.first, right.second, right.third, Modifier.align(Alignment.TopStart).padding(20.dp).alpha(p))
+        if (p < 0f) Stamp(left.first, left.second, left.third, Modifier.align(Alignment.TopEnd).padding(20.dp).alpha(-p))
     }
 }
 

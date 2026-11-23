@@ -74,6 +74,8 @@ object MediaRepo {
             val iData = if (USE_APP_TRASH) c.getColumnIndexOrThrow(dataCol ?: pathCol) else null
 
             while (c.moveToNext()) {
+                // 고르기로 만든 사본(Pictures/Swik …)은 목록에 넣지 않는다
+                if ("Pictures/$SWIK_DIR_PREFIX" in (c.getString(iPath) ?: "")) continue
                 val id = c.getLong(iId)
                 val kind = if (c.getInt(iType) == MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO) Kind.VIDEO else Kind.IMAGE
                 val taken = c.getLong(iTaken).takeIf { it > 0 } ?: (c.getLong(iAdded) * 1000)

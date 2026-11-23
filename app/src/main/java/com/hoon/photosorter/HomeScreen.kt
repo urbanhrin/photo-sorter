@@ -1,7 +1,11 @@
 package com.hoon.photosorter
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -49,7 +53,11 @@ fun HomeScreen(vm: AppViewModel) {
         ) {
             Column(Modifier.weight(1f)) {
                 Text("Swik", fontSize = 28.sp, fontWeight = FontWeight.Bold)
-                Text("남은 항목 ${kindItems.count { decisions[it.id] == null }}개", color = Muted, fontSize = 14.sp)
+                Text(
+                    if (vm.pickMode) "올릴 사진을 골라 모아요 · 원본은 그대로"
+                    else "남은 항목 ${kindItems.count { decisions[it.id] == null }}개",
+                    color = Muted, fontSize = 14.sp,
+                )
             }
             // 안드로이드 8~10 에서만 보이는 앱 휴지통 입구
             if (USE_APP_TRASH && vm.trash.isNotEmpty()) {
@@ -74,6 +82,56 @@ fun HomeScreen(vm: AppViewModel) {
                             fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
                         )
                     }
+                }
+            }
+        }
+
+        // 정리 / 고르기
+        Row(
+            Modifier.padding(horizontal = 20.dp, vertical = 4.dp).fillMaxWidth()
+                .background(Surface, RoundedCornerShape(14.dp)).padding(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            listOf(false to "정리", true to "고르기").forEach { (pick, name) ->
+                val selected = vm.pickMode == pick
+                Box(
+                    Modifier.weight(1f).height(48.dp).clip(RoundedCornerShape(11.dp))
+                        .background(if (selected) TextMain else Color.Transparent)
+                        .clickable { vm.pickMode = pick },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        name, fontSize = 16.sp,
+                        color = if (selected) Bg else TextSub,
+                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                    )
+                }
+            }
+        }
+
+        // 고르기: 담을 폴더
+        if (vm.pickMode) {
+            Row(
+                Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp, top = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Row(
+                    Modifier.weight(1f).horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    val active = vm.activeFolder()
+                    vm.folders.forEach { f -> FolderChip(f, selected = f.id == active?.id) { vm.setActive(f.id) } }
+                    if (vm.folders.size < MAX_FOLDERS) {
+                        val shape = RoundedCornerShape(20.dp)
+                        Box(
+                            Modifier.height(40.dp).clip(shape).border(1.5.dp, Track, shape)
+                                .clickable { vm.newFolder() }.padding(horizontal = 14.dp),
+                            contentAlignment = Alignment.Center,
+                        ) { Text(if (vm.folders.isEmpty()) "+ 담을 폴더 만들기" else "+ 새 폴더", color = TextSub, fontSize = 14.sp) }
+                    }
+                }
+                if (vm.folders.isNotEmpty()) {
+                    TextButton(onClick = { vm.screen = Screen.Folders }) { Text("관리", color = TextSub, fontWeight = FontWeight.Bold) }
                 }
             }
         }
@@ -135,15 +193,68 @@ fun HomeScreen(vm: AppViewModel) {
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 items(groups, key = { it.first.toEpochDay() }) { (date, list) ->
-                    DateCard(date, list, decisions, isLast = date == vm.lastDate) { vm.openDate(date) }
+                    if (vm.pickMode) {
+                        PickDateCard(date, list, vm.folders) {
+                            if (vm.folders.isEmpty()) vm.newFolder() else vm.openDate(date)
+                        }
+                    } else {
+                        DateCard(date, list, decisions, isLast = date == vm.lastDate) { vm.openDate(date) }
+                    }
                 }
             }
         }
 
-        if (pending > 0) {
+        if (vm.pickMode) {
+            val f = vm.activeFolder()
+            if (f != null && f.items.isNotEmpty()) {
+                BigButton("${f.name} 바구니 ${f.items.size}장 보기", f.bg, f.fg, Modifier.fillMaxWidth().padding(16.dp)) {
+                    vm.screen = Screen.Basket(f.id)
+                }
+            }
+        } else if (pending > 0) {
             BigButton("지울 항목 확인 · ${pending}개", Del, OnDel, Modifier.fillMaxWidth().padding(16.dp)) {
                 vm.screen = Screen.Review
             }
+        }
+    }
+}
+
+/** 고르기 모드의 날짜 카드: 폴더마다 몇 장 담았는지 색 점으로 보여준다 */
+@Composable
+private fun PickDateCard(date: LocalDate, list: List<MediaItem>, folders: List<PickFolder>, onOpen: () -> Unit) {
+    val ids = list.map { it.id }.toSet()
+    val counts = folders.map { f -> f to f.items.count { it in ids } }
+    val seenAny = folders.any { f -> f.seen.any { it in ids } }
+    Column(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Surface)
+            .clickable(onClick = onOpen).padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
+            Text(date.label(), fontSize = 17.sp, fontWeight = FontWeight.Bold)
+            Text("${list.size}개", color = Muted, fontSize = 13.sp)
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            list.take(4).forEach {
+                MediaView(it, Modifier.weight(1f).height(78.dp).clip(RoundedCornerShape(8.dp)), crop = true)
+            }
+            repeat(4 - list.take(4).size) { Spacer(Modifier.weight(1f)) }
+        }
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            val picked = counts.filter { it.second > 0 }
+            if (picked.isEmpty()) {
+                Text(if (seenAny) "담은 사진 없음" else "아직 안 봄", color = Muted, fontSize = 14.sp, modifier = Modifier.weight(1f))
+            } else {
+                Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    picked.forEach { (f, n) ->
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                            Box(Modifier.size(10.dp).clip(RoundedCornerShape(5.dp)).background(f.bg))
+                            Text("$n", color = f.fg, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        }
+                    }
+                }
+            }
+            Text("고르기 ›", color = TextSub, fontWeight = FontWeight.Bold, fontSize = 14.sp)
         }
     }
 }

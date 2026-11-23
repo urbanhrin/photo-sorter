@@ -17,7 +17,10 @@ import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.ui.Alignment
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -85,6 +88,23 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
                             Screen.Trash -> TrashScreen(vm)
+                            is Screen.Pick -> PickScreen(vm, s.date, onPlay = ::playVideo)
+                            is Screen.Basket -> BasketScreen(vm, s.folderId)
+                            is Screen.Collected -> CollectedScreen(vm, s.folderId)
+                            Screen.Folders -> FoldersScreen(vm)
+                        }
+                        vm.editingFolder?.let { FolderEditorDialog(vm, it) }
+                        // 사본을 만들거나 지우는 동안 다른 조작을 막는다
+                        vm.busy?.let { msg ->
+                            Box(
+                                Modifier.fillMaxSize().background(Bg.copy(alpha = 0.85f)).clickable(enabled = true) {},
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                                    CircularProgressIndicator(color = TextMain)
+                                    Text(msg, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                                }
+                            }
                         }
                     }
                 }
